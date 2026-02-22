@@ -73,75 +73,65 @@
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyBFuPBD3IZWiklbRdW0IS78Xr2MHmqK2nU",
-            authDomain: "cse-5-cse.firebaseapp.com",
-            projectId: "cse-5-cse",
-            storageBucket: "cse-5-cse.firebasestorage.app",
-            messagingSenderId: "385090633983",
-            appId: "1:385090633983:web:24dc98e6c58279dd520cca"
-        };
+    const firebaseConfig = {
+        apiKey: "AIzaSyBFuPBD3IZWiklbRdW0IS78Xr2MHmqK2nU",
+        authDomain: "cse-5-cse.firebaseapp.com",
+        projectId: "cse-5-cse",
+        storageBucket: "cse-5-cse.firebasestorage.app",
+        messagingSenderId: "385090633983",
+        appId: "1:385090633983:web:24dc98e6c58279dd520cca"
+    };
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
-        const AUTHORIZED_ADMINS = [
-            "allubalaji12@gmail.com", 
-            "rohitmamidi7@gmail.com",
-            "varshyakuda@gmail.com"
-        ];
+    const AUTHORIZED_ADMINS = [
+        "allubalaji12@gmail.com", 
+        "rohitmamidi7@gmail.com",
+        "varshyakuda@gmail.com"
+    ];
 
-        // Security Check
-        onAuthStateChanged(auth, (user) => {
-            if (user && user.email === ADMIN_EMAIL) {
-                document.body.style.display = "block";
-            } else {
-                window.location.href = "login.html";
-            }
-        });
+    onAuthStateChanged(auth, (user) => {
+        if (user && AUTHORIZED_ADMINS.includes(user.email)) {
+            document.body.style.display = "block";
+        } else {
+            window.location.href = "admin_login.html";
+        }
+    });
 
-        // Handle Payment Creation
-        document.getElementById('paymentForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const roll = document.getElementById('targetRoll').value.trim().toUpperCase();
-            const title = document.getElementById('feeTitle').value;
-            const amount = document.getElementById('feeAmount').value;
-            const due = document.getElementById('dueDate').value;
+    document.getElementById('paymentForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const roll = document.getElementById('targetRoll').value.trim().toUpperCase();
+        const title = document.getElementById('feeTitle').value;
+        const amount = document.getElementById('feeAmount').value;
+        const upi = document.getElementById('adminUpi').value.trim(); // Capture UPI correctly
+        const due = document.getElementById('dueDate').value;
 
-            try {
-                // Add new payment record to the 'payments' collection
-                await addDoc(collection(db, "payments"), {
-                    studentRoll: roll,
-                    description: title,
-                    amount: amount,
-                    dueDate: due || "Not Specified",
-                    status: "Unpaid",
-                    issuedAt: new Date(),
-                    issuedBy: ADMIN_EMAIL
-                });
+        try {
+            // Combined into ONE single successful call
+            await addDoc(collection(db, "payments"), {
+                studentRoll: roll,
+                description: title,
+                amount: amount,
+                upiId: upi, 
+                dueDate: due || "Not Specified",
+                status: "Unpaid",
+                issuedAt: new Date(),
+                issuedBy: auth.currentUser.email
+            });
 
-                alert(`Success: Payment demand for "${title}" has been issued to ${roll}.`);
-                e.target.reset();
-            } catch (err) {
-                alert("Critical Error: " + err.message);
-            }
-        });
-        await addDoc(collection(db, "payments"), {
-    studentRoll: roll,
-    description: title,
-    amount: amount,
-    upiId: document.getElementById('adminUpi').value, // NEW FIELD
-    dueDate: due || "Not Specified",
-    status: "Unpaid",
-    issuedAt: new Date()
-});
-
-    </script>
+            alert(`Success: Payment demand for "${title}" issued to ${roll}.`);
+            e.target.reset();
+        } catch (err) {
+            alert("Error: " + err.message);
+        }
+    });
+</script>
 </body>
 </html>

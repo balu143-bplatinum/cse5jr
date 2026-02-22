@@ -204,17 +204,26 @@
             appId: "1:385090633983:web:24dc98e6c58279dd520cca"
         };
 
-        const AUTHORIZED_ADMINS = [
-            "allubalaji12@gmail.com", 
-            "rohitmamidi7@gmail.com",
-            "varshyakuda@gmail.com"
-        ];
-        
+       
+
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        const ADMIN_EMAIL = "cr2007@aol.com"; 
+       const AUTHORIZED_ADMINS = [
+    "allubalaji12@gmail.com",
+    "rohitmamidi7@gmail.com",
+    "varshyakuda@gmail.com",
+    
+];
+
+onAuthStateChanged(auth, (user) => {
+    if (user && AUTHORIZED_ADMINS.includes(user.email)) {
+        document.body.style.display = "block"; // Only show page if authorized
+    } else {
+        window.location.href = "admin_login.html"; // Redirect back to login if not
+    }
+});
 
         // --- FIXED SESSION TIMER LOGIC ---
         let timeRemaining = 120; // 5 minutes in seconds

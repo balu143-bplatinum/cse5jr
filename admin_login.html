@@ -36,6 +36,30 @@
         #errorBox { color: #d9534f; font-size: 13px; text-align: center; margin-top: 15px; display: none; }
         .back-link { text-align: center; margin-top: 20px; font-size: 14px; }
         .back-link a { color: var(--admin-blue); text-decoration: none; }
+        
+    :root {
+        --admin-blue: #003366;
+        --accent-gold: #ff9933;
+    }
+    body { 
+        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        margin: 0; background: #f0f2f5; 
+        display: flex; flex-direction: column; min-height: 100vh;
+    }
+    .login-container { 
+        margin: auto; width: 90%; max-width: 400px; 
+        background: white; padding: 30px; border-radius: 12px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        border-top: 6px solid var(--admin-blue);
+    }
+    /* Mobile adjustments */
+    @media (max-width: 480px) {
+        .login-container { padding: 20px; border-radius: 0; width: 100%; max-width: none; flex: 1; display: flex; flex-direction: column; justify-content: center; }
+        input { font-size: 16px; } /* Prevents iOS zoom on focus */
+    }
+    input { width: 100%; padding: 14px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+    .btn-admin { width: 100%; padding: 16px; background: var(--admin-blue); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+
     </style>
 </head>
 <body>
@@ -62,57 +86,57 @@
         </div>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyBFuPBD3IZWiklbRdW0IS78Xr2MHmqK2nU",
-            authDomain: "cse-5-cse.firebaseapp.com",
-            projectId: "cse-5-cse",
-            storageBucket: "cse-5-cse.firebasestorage.app",
-            messagingSenderId: "385090633983",
-            appId: "1:385090633983:web:24dc98e6c58279dd520cca"
-        };
+    // UPDATED: Now matches cse-5-cse project
+    const firebaseConfig = {
+        apiKey: "AIzaSyBFuPBD3IZWiklbRdW0IS78Xr2MHmqK2nU",
+        authDomain: "cse-5-cse.firebaseapp.com",
+        projectId: "cse-5-cse",
+        storageBucket: "cse-5-cse.firebasestorage.app",
+        messagingSenderId: "385090633983",
+        appId: "1:385090633983:web:24dc98e6c58279dd520cca"
+    };
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
 
-        // --- AUTHORIZED LIST ---
-        const AUTHORIZED_ADMINS = [
-            "allubalaji12@gmail.com", 
-            "rohitmamidi7@gmail.com",
-            "varshyakuda@gmail.com"
-        ];
+    // UPDATED: Comprehensive list of authorized admins
+    const AUTHORIZED_ADMINS = [
+        "allubalaji12@gmail.com",
+        "rohitmamidi7@gmail.com",
+        "varshyakuda@gmail.com",
+        
+    ];
 
-        const form = document.getElementById('adminLoginForm');
-        const errorBox = document.getElementById('errorBox');
+    const form = document.getElementById('adminLoginForm');
+    const errorBox = document.getElementById('errorBox');
 
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            errorBox.style.display = "none";
-            
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value;
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        errorBox.style.display = "none";
+        
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
 
-            // Step 1: Check if email is in the admin list BEFORE hitting Firebase
-            if (!AUTHORIZED_ADMINS.includes(email)) {
-                errorBox.innerText = "No Access: You are not CR/LR";
+        // Step 1: Client-side permission check
+        if (!AUTHORIZED_ADMINS.includes(email)) {
+            errorBox.innerText = "No Access: You are not authorized as CR/LR.";
+            errorBox.style.display = "block";
+            return;
+        }
+
+        // Step 2: Authentication against the CORRECT Firebase project
+        signInWithEmailAndPassword(auth, email, password)
+            .then(() => {
+                window.location.href = "admin.html";
+            })
+            .catch((error) => {
+                console.error("Auth Error:", error.code);
+                errorBox.innerText = "Authentication failed. Check your password.";
                 errorBox.style.display = "block";
-                return;
-            }
-
-            // Step 2: Proceed with Authentication
-            signInWithEmailAndPassword(auth, email, password)
-                .then(() => {
-                    // Success: Redirect to the main admin control page
-                    window.location.href = "admin.html";
-                })
-                .catch((error) => {
-                    errorBox.innerText = "Invalid credentials. Incident has been logged.";
-                    errorBox.style.display = "block";
-                });
-        });
-    </script>
-</body>
-</html>
+            });
+    });
+</script>
