@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Active Session Manager | Admin</title>
+    <style>
+        :root { --admin-blue: #003366; --danger: #cc0000; }
+        body { font-family: sans-serif; background: #f4f4f4; padding: 20px; }
+        .session-card { 
+            background: white; padding: 15px; margin-bottom: 10px; 
+            display: flex; justify-content: space-between; align-items: center;
+            border-left: 5px solid var(--admin-blue); border-radius: 4px;
+        }
+        .terminate-btn { 
+            background: var(--danger); color: white; border: none; 
+            padding: 8px 15px; cursor: pointer; border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+   <div class="card">
+    <h2>Live Student Monitor</h2>
+    <div id="activeUsers">Scanning for active connections...</div>
+</div>
+
+<script type="module">
+    import { getFirestore, collection, onSnapshot, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    
+    const db = getFirestore(app);
+
+    // Watch for new logins/logouts in real-time
+    onSnapshot(collection(db, "active_sessions"), (snapshot) => {
+        const container = document.getElementById('activeUsers');
+        container.innerHTML = "";
+        
+        snapshot.forEach((userDoc) => {
+            const userData = userDoc.data();
+            container.innerHTML += `
+                <div style="padding:15px; border-bottom:1px solid #ddd; display:flex; justify-content:space-between;">
+                    <span><strong>User:</strong> ${userData.email}</span>
+                    <button onclick="kickUser('${userDoc.id}')" style="background:red; color:white; border:none; padding:5px 10px; cursor:pointer;">
+                        FORCE LOGOUT
+                    </button>
+                </div>
+            `;
+        });
+    });
+
+    // Function to terminate student session
+    window.kickUser = async (uid) => {
+        if(confirm("Are you sure you want to log this student out remotely?")) {
+            await deleteDoc(doc(db, "active_sessions", uid));
+        }
+    };
+</script>
+</body>
+</html>

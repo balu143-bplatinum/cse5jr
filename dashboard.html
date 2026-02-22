@@ -210,6 +210,36 @@
             } else { window.location.href = "login.html"; }
         });
 
+// Inside your existing onAuthStateChanged block in dashboard.html
+import { doc, onSnapshot, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+onAuthStateChanged(auth, async (user) => {
+    if (user) {
+        const sessionRef = doc(db, "active_sessions", user.uid);
+
+        // 1. Create the session on login
+        await setDoc(sessionRef, {
+            email: user.email,
+            lastActive: new Date(),
+            status: "online"
+        }, { merge: true });
+
+        // 2. Listen for Admin Termination
+        onSnapshot(sessionRef, (snapshot) => {
+            if (!snapshot.exists()) {
+                alert("Your session has been terminated by an administrator.");
+                signOut(auth).then(() => window.location.href = "login.html");
+            }
+        });
+
+        // 3. Clean up session on manual logout
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            await deleteDoc(sessionRef);
+            signOut(auth).then(() => window.location.href = "login.html");
+        });
+    }
+});
+
         // RESTORED PROGRESS BAR LOGIC
         async function loadAttendance(roll) {
             const q = query(collection(db, "attendance"), where("studentRoll", "==", roll));
@@ -231,7 +261,7 @@
             const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
             const today = days[new Date().getDay()];
             const sched = {
-                'Monday': [{t:'09:00', s:'Data Structures', v:'LH-1'}, {t:'11:00', s:'Discrete Maths', v:'LH-2'}],
+                'Monday': [{t:'09:00', s:'Data Structures', v:'NCRC'}, {t:'11:00', s:'Discrete Maths', v:'LH-2'}],
                 'Tuesday': [{t:'09:00', s:'DBMS', v:'Lab-1'}, {t:'02:00', s:'Operating Systems', v:'LH-1'}],
                 'Wednesday': [{t:'10:00', s:'TOC', v:'LH-2'}],
                 'Thursday': [{t:'09:00', s:'Networks', v:'LH-1'}, {t:'11:00', s:'Software Eng.', v:'LH-3'}],
@@ -350,4 +380,3 @@ document.body.addEventListener('click', resetTimer);
 </body>
 
 </html>
-
