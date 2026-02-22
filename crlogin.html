@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CR LOGIN | RESTRICTED</title>
+    <style>
+        :root {
+            --neon-green: #0f0;
+            --alert-red: #ff0033;
+            --terminal-bg: #0a0a0a;
+        }
+        
+        * { box-sizing: border-box; }
+        body { 
+            background: var(--terminal-bg); 
+            color: var(--neon-green); 
+            font-family: 'Courier New', Courier, monospace;
+            margin: 0; display: flex; justify-content: center; align-items: center; 
+            min-height: 100vh; overflow: hidden;
+        }
+
+        .portal-frame {
+            width: 90%; max-width: 450px; padding: 2rem;
+            border: 1px solid var(--neon-green);
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.2);
+        }
+
+        h2 { text-align: center; letter-spacing: 3px; }
+        .input-group { margin-bottom: 20px; }
+        label { display: block; font-size: 0.8rem; margin-bottom: 5px; }
+        
+        input {
+            width: 100%; background: transparent; border: 1px solid var(--neon-green);
+            padding: 12px; color: var(--neon-green); outline: none; font-size: 16px;
+        }
+
+        .btn-access {
+            width: 100%; background: var(--neon-green); color: black;
+            border: none; padding: 15px; font-weight: bold; cursor: pointer;
+            text-transform: uppercase; transition: 0.3s;
+        }
+
+        /* Hacker Alert Page */
+        #hackerAlert {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: black; z-index: 999; flex-direction: column;
+            justify-content: center; align-items: center; text-align: center;
+        }
+
+        .high-alert {
+            color: var(--alert-red); font-size: 3rem; font-weight: bold;
+            animation: blink 0.2s infinite; /* Faster blink for high alert */
+        }
+
+        @keyframes blink {
+            0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; }
+        }
+
+        .log-stream {
+            font-size: 10px; color: white; margin-top: 30px; 
+            text-align: left; width: 80%; height: 100px; overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="portal-frame" id="loginUI">
+        <h2>SECURE_LOGIN</h2>
+        <form id="hackerForm">
+            <div class="input-group">
+                <label>> ADMIN_ID</label>
+                <input type="email" id="email" required>
+            </div>
+            <div class="input-group">
+                <label>> SECRET_KEY</label>
+                <input type="password" id="pass" required>
+            </div>
+            <button type="submit" class="btn-access">AUTHENTICATE</button>
+        </form>
+    </div>
+
+    <div id="hackerAlert">
+        <div class="high-alert">⚠ HIGH ALERT ⚠</div>
+        <div style="color:white; margin: 20px;">BREACH DETECTED: UNATHORIZED ID</div>
+        <div id="alertDetails" style="color:var(--alert-red); font-weight:bold;"></div>
+        <div class="log-stream" id="logStream"></div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBFuPBD3IZWiklbRdW0IS78Xr2MHmqK2nU",
+            authDomain: "cse-5-cse.firebaseapp.com",
+            projectId: "cse-5-cse",
+            appId: "1:385090633983:web:24dc98e6c58279dd520cca"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        const RESTRICTED_EMAIL = "allubalaji12@gmail.com"; 
+
+        // --- AUDIO ALARM GENERATOR ---
+        function startAlarmSound() {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // Create a repeating siren effect
+            setInterval(() => {
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+
+                oscillator.type = 'square'; // Harsh hacker sound
+                oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // High pitch
+                oscillator.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.5);
+
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.5);
+            }, 600);
+        }
+
+        document.getElementById('hackerForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value.trim();
+            const pass = document.getElementById('pass').value;
+
+            signInWithEmailAndPassword(auth, email, pass).then(() => {
+                if (email === RESTRICTED_EMAIL) {
+                    triggerHackerAlert(email);
+                } else {
+                    window.location.href = "admin.html";
+                }
+            }).catch(() => alert("ACCESS DENIED"));
+        });
+
+        function triggerHackerAlert(email) {
+            document.getElementById('loginUI').style.display = 'none';
+            document.getElementById('hackerAlert').style.display = 'flex';
+            document.getElementById('alertDetails').innerText = `ACCESS REVOKED FOR: ${email}`;
+            
+            startAlarmSound(); // Trigger the Sound
+            startLogStream();  // Start visual hacker logs
+        }
+
+        function startLogStream() {
+            const logs = [
+                "> INITIATING TRACE...", "> UPLOADING IP TO FEDS...", 
+                "> ENCRYPTING LOCAL DRIVE...", "> BIOMETRIC SCAN CAPTURED",
+                "> REPORTING TO CYBER-CRIME UNIT..."
+            ];
+            const stream = document.getElementById('logStream');
+            let i = 0;
+            setInterval(() => {
+                stream.innerHTML += `<div>${logs[i % logs.length]}</div>`;
+                i++;
+            }, 300);
+        }
+    </script>
+</body>
+</html>
