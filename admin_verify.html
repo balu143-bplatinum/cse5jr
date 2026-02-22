@@ -67,7 +67,11 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        const ADMINS = ["allubalaji12@gmail.com", "cr2007@aol.com", "lr2007@aol.com"];
+       const AUTHORIZED_ADMINS = [
+            "allubalaji12@gmail.com", 
+            "rohitmamidi7@gmail.com",
+            "varshyakuda@gmail.com"
+        ];
 
         onAuthStateChanged(auth, (user) => {
             if (user && ADMINS.includes(user.email)) {

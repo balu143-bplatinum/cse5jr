@@ -225,13 +225,11 @@
                     // Successful login
                     window.location.href = "dashboard.html"; 
                 })
-                .catch((error) => {
+                 .catch((error) => {
     errorBox.style.display = 'block';
     errorBox.innerText = "Authentication Failed: Wrong login credentials, you do not belong to CSE 3, or you may not have paid the web maintenance fee.";
 });
-
         });
     </script>
 </body>
-
 </html>
