@@ -78,23 +78,13 @@
         </div>
     </div>
 
-    <script type="module">
+  <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { 
-        getAuth, 
-        onAuthStateChanged, 
-        signOut, 
-        setPersistence, 
-        browserSessionPersistence 
+        getAuth, onAuthStateChanged, signOut, setPersistence, browserSessionPersistence 
     } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
     import { 
-        getFirestore, 
-        doc, 
-        collection, 
-        query, 
-        where, 
-        getDocs, 
-        orderBy 
+        getFirestore, collection, query, where, getDocs, orderBy 
     } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -110,56 +100,68 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // --- 1. SESSION PERSISTENCE & AUTH ---
-    // Forces logout when browser/tab is closed
-    setPersistence(auth, browserSessionPersistence)
-        .then(() => {
-            onAuthStateChanged(auth, async (user) => {
-                if (user) {
-                    try {
-                        // FIXED: Match logic in dashboard.html by querying email
-                        const q = query(collection(db, "students"), where("email", "==", user.email));
-                        const querySnapshot = await getDocs(q);
-                        
-                        if (!querySnapshot.empty) {
-                            const studentData = querySnapshot.docs[0].data();
-                            loadDetailedReport(studentData.rollNo);
-                        } else {
-                            document.getElementById('loader').innerText = "Student record not found.";
-                        }
-                    } catch (err) {
-                        console.error(err);
-                        document.getElementById('loader').innerText = "Error: " + err.message;
-                    }
-                } else {
-                    window.location.href = "login.html";
-                }
-            });
-        });
+    // CHANGED: Set timeout to 1 minute (60,000 milliseconds)
+    const TIMEOUT = 60000; 
 
-    // --- 2. LOGOUT ON TAB CLOSE ---
-    window.addEventListener('beforeunload', () => {
-        signOut(auth);
+    // --- 1. AUTH & PERSISTENCE ---
+    setPersistence(auth, browserSessionPersistence).then(() => {
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                if (!localStorage.getItem('lastActivity')) localStorage.setItem('lastActivity', Date.now());
+                
+                try {
+                    const q = query(collection(db, "students"), where("email", "==", user.email));
+                    const snap = await getDocs(q);
+                    if (!snap.empty) {
+                        loadDetailedReport(snap.docs[0].data().rollNo);
+                    } else {
+                        document.getElementById('loader').innerText = "Record not found.";
+                    }
+                } catch (err) {
+                    document.getElementById('loader').innerText = "Load Error: " + err.message;
+                }
+            } else {
+                window.location.href = "login.html";
+            }
+        });
     });
 
-    // --- 3. ATTENDANCE REPORT LOGIC ---
+    // --- 2. TIMER SYNC ---
+    function syncTimer() {
+        const lastActive = parseInt(localStorage.getItem('lastActivity') || Date.now());
+        const elapsed = Date.now() - lastActive;
+
+        if (elapsed >= TIMEOUT) {
+            // CHANGED: Redirect back to Dashboard instead of logging out
+            window.location.href = "dashboard.html"; 
+        } else {
+            const remaining = Math.max(0, Math.floor((TIMEOUT - elapsed) / 1000));
+            const mins = Math.floor(remaining / 60);
+            const secs = remaining % 60;
+            const display = document.getElementById('sessionTimer');
+            if(display) display.innerText = `Auto-Return to Dashboard: ${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+    }
+
+    function resetActivity() { localStorage.setItem('lastActivity', Date.now()); }
+    setInterval(syncTimer, 1000);
+    ['mousedown', 'mousemove', 'keypress', 'scroll', 'click'].forEach(e => {
+        document.addEventListener(e, resetActivity);
+    });
+
+    // --- 3. DETAILED LOGS ---
     async function loadDetailedReport(roll) {
         const container = document.getElementById('reportContainer');
         const table = document.getElementById('reportTable');
         const loader = document.getElementById('loader');
 
         try {
-            const q = query(
-                collection(db, "attendance"), 
-                where("studentRoll", "==", roll),
-                orderBy("date", "desc")
-            );
-            
+            const q = query(collection(db, "attendance"), where("studentRoll", "==", roll), orderBy("date", "desc"));
             const snap = await getDocs(q);
             let p = 0, a = 0;
 
             if (snap.empty) {
-                loader.innerHTML = `<h3>No records found for Roll: ${roll}</h3>`;
+                loader.innerHTML = `<h3>No records found for ${roll}</h3>`;
                 return;
             }
 
@@ -168,56 +170,18 @@
                 const data = doc.data();
                 const isP = data.status === "Present";
                 if (isP) p++; else a++;
-
-                container.innerHTML += `
-                    <tr>
-                        <td>${data.date}</td>
-                        <td>${data.subject}</td>
-                        <td class="${isP ? 'status-p' : 'status-a'}">${data.status}</td>
-                    </tr>`;
+                container.innerHTML += `<tr><td>${data.date}</td><td>${data.subject}</td><td class="${isP ? 'status-p' : 'status-a'}">${data.status}</td></tr>`;
             });
 
-            const total = p + a;
-            document.getElementById('overallPercent').innerText = Math.round((p/total)*100) + "%";
+            document.getElementById('overallPercent').innerText = Math.round((p/(p+a))*100) + "%";
             document.getElementById('countP').innerText = p;
             document.getElementById('countA').innerText = a;
-
             loader.style.display = 'none';
             table.style.display = 'table';
-
         } catch (err) {
-            console.error(err);
-            loader.innerText = "Query Error. Check Firestore Indexes.";
+            loader.innerText = "Check Firestore Index.";
         }
     }
-
-    // --- 4. SESSION TIMER SYNC ---
-    const SESSION_TIMEOUT = 5 * 60 * 1000; 
-
-    function syncSession() {
-        const now = Date.now();
-        const lastActive = localStorage.getItem('lastActivity');
-        
-        if (lastActive && (now - lastActive > SESSION_TIMEOUT)) {
-            signOut(auth).then(() => window.location.href = "login.html");
-        }
-
-        const timerDisplay = document.getElementById('sessionTimer');
-        if (timerDisplay && lastActive) {
-            const remaining = Math.max(0, Math.floor((SESSION_TIMEOUT - (now - lastActive)) / 1000));
-            const mins = Math.floor(remaining / 60);
-            const secs = remaining % 60;
-            timerDisplay.innerText = `Session Expires in: ${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-        }
-    }
-
-    function resetActivity() { localStorage.setItem('lastActivity', Date.now()); }
-
-    resetActivity();
-    setInterval(syncSession, 1000);
-    ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(evt => {
-        document.addEventListener(evt, resetActivity);
-    });
 </script>
 </body>
 </html>

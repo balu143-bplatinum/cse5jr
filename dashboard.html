@@ -194,46 +194,72 @@
     const db = getFirestore(app);
 
     let currentRoll = "";
+    // Set timeout to 1 minute (60,000 milliseconds)
+    const TIMEOUT = 180000; 
 
-    // --- 1. SET PERSISTENCE TO SESSION ONLY ---
-    // This makes Firebase logout automatically when the browser/tab is closed
-    setPersistence(auth, browserSessionPersistence)
-        .then(() => {
-            // After setting persistence, monitor the auth state
-            onAuthStateChanged(auth, async (user) => {
-                if (user) {
-                    fetchGlobalNotice();
-                    const q = query(collection(db, "students"), where("email", "==", user.email));
-                    const snap = await getDocs(q);
-                    if (!snap.empty) {
-                        const data = snap.docs[0].data();
-                        currentRoll = data.rollNo;
-                        
-                        document.getElementById('sideName').innerText = data.name;
-                        document.getElementById('sideRoll').innerText = "Roll: " + currentRoll;
-                        document.getElementById('sideEmail').innerText = user.email;
-                        document.getElementById('sidePhone').innerText = data.phone || "Not Set";
-                        document.getElementById('initials').innerText = data.name.charAt(0).toUpperCase();
+    // --- 1. SESSION MANAGEMENT & AUTH ---
+    setPersistence(auth, browserSessionPersistence).then(() => {
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                // Initialize the shared activity timestamp immediately upon login/load
+                localStorage.setItem('lastActivity', Date.now());
+                
+                fetchGlobalNotice();
+                const q = query(collection(db, "students"), where("email", "==", user.email));
+                const snap = await getDocs(q);
+                if (!snap.empty) {
+                    const data = snap.docs[0].data();
+                    currentRoll = data.rollNo;
+                    
+                    document.getElementById('sideName').innerText = data.name;
+                    document.getElementById('sideRoll').innerText = "Roll: " + currentRoll;
+                    document.getElementById('sideEmail').innerText = user.email;
+                    document.getElementById('sidePhone').innerText = data.phone || "Not Set";
+                    document.getElementById('initials').innerText = data.name.charAt(0).toUpperCase();
 
-                        loadAttendance(currentRoll);
-                        loadPayments(currentRoll);
-                        loadTimetable();
-                        document.getElementById('loader').style.display = 'none';
-                    }
-                } else { 
-                    window.location.href = "index.html"; 
+                    loadAttendance(currentRoll);
+                    loadPayments(currentRoll);
+                    loadTimetable();
+                    document.getElementById('loader').style.display = 'none';
                 }
-            });
-        })
-        .catch((error) => console.error("Persistence Error:", error));
-
-    // --- 2. EXPLICIT LOGOUT ON TAB CLOSE ---
-    window.addEventListener('beforeunload', () => {
-        // This triggers a sign-out as the tab is destroyed
-        signOut(auth);
+            } else { 
+                window.location.href = "index.html"; 
+            }
+        });
     });
 
-    // --- 3. ATTENDANCE & TIMETABLE LOGIC ---
+    // --- 2. GLOBAL SYNC TIMER ---
+    function syncTimer() {
+        const lastActive = parseInt(localStorage.getItem('lastActivity') || Date.now());
+        const elapsed = Date.now() - lastActive;
+
+        if (elapsed >= TIMEOUT) {
+            // Dashboard logs out completely when the 1-minute limit is hit
+            signOut(auth).then(() => {
+                localStorage.removeItem('lastActivity');
+                window.location.href = "index.html";
+            });
+        } else {
+            const remaining = Math.max(0, Math.floor((TIMEOUT - elapsed) / 1000));
+            const mins = Math.floor(remaining / 60);
+            const secs = remaining % 60;
+            const display = document.getElementById('sessionTimer');
+            if(display) {
+                display.innerText = `Session Expires: ${mins}:${secs.toString().padStart(2, '0')}`;
+            }
+        }
+    }
+
+    // Reset activity timestamp on user interaction
+    window.resetTimer = () => localStorage.setItem('lastActivity', Date.now());
+    
+    setInterval(syncTimer, 1000);
+    
+    ['mousedown', 'mousemove', 'keypress', 'scroll', 'click'].forEach(e => {
+        document.addEventListener(e, resetTimer);
+    });
+
+    // --- 3. DATA LOADING FUNCTIONS ---
     async function loadAttendance(roll) {
         const q = query(collection(db, "attendance"), where("studentRoll", "==", roll));
         const snap = await getDocs(q);
@@ -258,7 +284,7 @@
             'Tuesday': [{t:'09:00', s:'M2', v:'NCRC GF-6'}, {t:'10:40', s:'PHY', v:'NCRC GF-6'}, {t:'01:30', s:'EEE', v:'NCRC GF-6'}],
             'Wednesday': [{t:'09:50', s:'B-1 DS LAB / B-2 LA LAB', v:'RESPECTIVE LABS'}, {t:'01:30', s:'DS', v:'NCRC GF-6'}],
             'Thursday': [{t:'09:00', s:'DLD', v:'NCRC GF-6'}, {t:'10:40', s:'PHY', v:'NCRC GF-6'}, {t:'01:30', s:'DS', v:'NCRC GF-6'}],
-            'Friday': [{t:'09:00', s:'M2', v:'NCRC GF-6'},{t:'10:40', s:'DLD', v:''}, {t:'01:30', s:'B-1 PHYSICS LAB', v:'CHEMICAL'},],
+            'Friday': [{t:'09:00', s:'M2', v:'NCRC GF-6'},{t:'10:40', s:'DLD', v:''}, {t:'01:30', s:'B-1 PHYSICS LAB', v:'CHEMICAL'}],
             'Saturday': [{t:'01:30', s:'B-2 DS LAB / B-1 LA LAB', v:'RESPECTIVE LABS'}]
         };
         const list = sched[today] || [{t:'-', s:'No Session', v:'-'}];
@@ -282,40 +308,23 @@
             area.innerHTML = "";
             snap.forEach(docSnap => {
                 const p = docSnap.data();
-                const pId = docSnap.id;
-                let actionHtml = '';
-                if (p.status === "Unpaid") {
-                    const upiLink = `upi://pay?pa=${p.upiId}&pn=Admin&am=${p.amount}&cu=INR`;
-                    actionHtml = `<button class="btn" onclick="initiatePayment('${pId}', '${upiLink}')">Pay via UPI</button>`;
-                } else if (p.status === "Pending Approval") {
-                    actionHtml = `<p style="color:orange;">⏳ Awaiting Admin verification.</p>`;
-                } else if (p.status === "Paid") {
-                    actionHtml = `<button class="btn" style="background:green;">Download Receipt</button>`;
-                }
-
                 area.innerHTML += `
                     <div class="card" style="border-left: 5px solid var(--accent-gold);">
                         <h4>${p.description}</h4>
                         <p>Amount: ₹${p.amount} | Status: <b>${p.status}</b></p>
-                        ${actionHtml}
                     </div>`;
             });
         });
     }
 
     // --- 4. WINDOW FUNCTIONS ---
-    window.initiatePayment = async (docId, upiLink) => {
-        window.location.href = upiLink;
-        await updateDoc(doc(db, "payments", docId), { status: "Pending Approval" });
-        alert("Redirecting to UPI... Please wait for approval after paying.");
-    };
-
     window.openEditModal = () => {
         document.getElementById('editRoll').value = currentRoll;
         document.getElementById('editName').value = document.getElementById('sideName').innerText;
         document.getElementById('editPhone').value = document.getElementById('sidePhone').innerText;
         document.getElementById('editModal').style.display = 'flex';
     };
+    
     window.closeEditModal = () => document.getElementById('editModal').style.display = 'none';
 
     document.getElementById('saveProfileBtn').addEventListener('click', async () => {
@@ -329,34 +338,12 @@
         } catch (e) { alert("Error: " + e.message); }
     });
 
-    document.getElementById('logoutBtn').addEventListener('click', () => signOut(auth).then(() => window.location.href = "login.html"));
-
-    // --- 5. SESSION TIMER (INACTIVITY) ---
-    let timeRemaining = 300; 
-    const timerDisplay = document.getElementById('sessionTimer');
-
-    function updateTimerUI() {
-        const minutes = Math.floor(timeRemaining / 60);
-        const seconds = timeRemaining % 60;
-        if (timerDisplay) {
-            timerDisplay.innerText = `Session Expires: ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-        }
-        if (timeRemaining <= 0) {
-            clearInterval(sessionInterval);
-            signOut(auth).then(() => window.location.href = "index.html");
-        }
-        timeRemaining--;
-    }
-
-    window.resetTimer = () => { timeRemaining = 120; };
-    const sessionInterval = setInterval(updateTimerUI, 1000);
-
-    document.body.addEventListener('mousemove', resetTimer);
-    document.body.addEventListener('keypress', resetTimer);
-    document.body.addEventListener('click', resetTimer);
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+        localStorage.removeItem('lastActivity');
+        signOut(auth).then(() => window.location.href = "login.html");
+    });
 </script>
 </body>
-
 
 
 </html>
