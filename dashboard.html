@@ -98,7 +98,7 @@
 
     <div class="gov-strip">
         <span>ANDHRA UNIVERSITY COLLEGE OF ENGINEERING (A)</span>
-        <span id="sessionTimer">Session Expires in: 05:00</span>
+        <span id="sessionTimer">Session Expires in: 01:00</span>
         <body onmousemove="resetTimer()" onclick="resetTimer()"></body>
     </div>
 
@@ -195,7 +195,7 @@
 
     let currentRoll = "";
     // Set timeout to 1 minute (60,000 milliseconds)
-    const TIMEOUT = 180000; 
+    const TIMEOUT = 30000; 
 
     // --- 1. SESSION MANAGEMENT & AUTH ---
     setPersistence(auth, browserSessionPersistence).then(() => {
@@ -344,6 +344,7 @@
     });
 </script>
 </body>
+
 
 
 </html>
