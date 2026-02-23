@@ -2,97 +2,131 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CSE-5 Ultimate Chat</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>CSE-3 chat</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-dark: #0f172a;
-            --sidebar-dark: #1e293b;
+            --bg-dark: #0b0f1a;
+            --sidebar-dark: #161b26;
             --accent-blue: #38bdf8;
             --accent-gradient: linear-gradient(135deg, #38bdf8 0%, #1d4ed8 100%);
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
             --online-green: #22c55e;
             --delete-red: #ef4444;
+            --sent-msg: #1d4ed8;
         }
 
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { font-family: 'Inter', sans-serif; margin: 0; background: var(--bg-dark); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg-dark); color: var(--text-main); height: 100vh; height: 100svh; overflow: hidden; }
 
-        /* Sidebar & Layout */
-        .sidebar { width: 320px; background: var(--sidebar-dark); display: flex; flex-direction: column; border-right: 1px solid rgba(255,255,255,0.05); transition: transform 0.3s ease; z-index: 100; }
-        .chat-area { flex: 1; display: flex; flex-direction: column; background: #0b0f1a; position: relative; width: 100%; }
+        .app-container { display: flex; height: 100%; width: 100%; position: relative; }
 
+        /* Sidebar - Desktop & Mobile */
+        .sidebar { 
+            width: 320px; background: var(--sidebar-dark); display: flex; flex-direction: column; 
+            border-right: 1px solid rgba(255,255,255,0.05); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+        }
+        
         @media (max-width: 768px) {
-            .sidebar { position: absolute; height: 100%; width: 280px; transform: translateX(-100%); }
-            .sidebar.active { transform: translateX(0); box-shadow: 10px 0 30px rgba(0,0,0,0.5); }
+            .sidebar { position: fixed; left: 0; top: 0; bottom: 0; transform: translateX(-100%); width: 280px; }
+            .sidebar.active { transform: translateX(0); box-shadow: 20px 0 50px rgba(0,0,0,0.5); }
         }
 
-        /* User List UI */
+        .sidebar-header { padding: 24px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); }
         .user-list { flex: 1; overflow-y: auto; padding: 10px; }
-        .user-item { padding: 12px; margin-bottom: 5px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; gap: 12px; transition: 0.2s; position: relative; }
-        .user-item.active { background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.2); }
+        
+        .user-item { 
+            padding: 12px; margin-bottom: 8px; border-radius: 14px; cursor: pointer; 
+            display: flex; align-items: center; gap: 12px; transition: 0.2s; position: relative;
+        }
+        .user-item:hover { background: rgba(255,255,255,0.03); }
+        .user-item.active { background: rgba(56, 189, 248, 0.1); }
+
         .avatar-box { position: relative; }
-        .avatar { width: 45px; height: 45px; border-radius: 50%; background: var(--accent-gradient); display: flex; align-items: center; justify-content: center; font-weight: bold; }
-        .status-dot { position: absolute; bottom: 2px; right: 2px; width: 12px; height: 12px; background: #64748b; border: 2px solid var(--sidebar-dark); border-radius: 50%; }
+        .avatar { width: 48px; height: 48px; border-radius: 16px; background: var(--accent-gradient); display: flex; align-items: center; justify-content: center; font-weight: 700; color: white; font-size: 18px; }
+        .status-dot { position: absolute; bottom: -2px; right: -2px; width: 14px; height: 14px; background: #475569; border: 3px solid var(--sidebar-dark); border-radius: 50%; }
         .online .status-dot { background: var(--online-green); box-shadow: 0 0 10px var(--online-green); }
-        .unread-badge { background: #ef4444; color: white; font-size: 11px; padding: 2px 8px; border-radius: 12px; margin-left: auto; font-weight: bold; display: none; }
+
+        .unread-badge { background: var(--delete-red); color: white; font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 8px; margin-left: auto; display: none; }
         .has-unread .unread-badge { display: block; }
 
-        /* Messages */
-        #message-container { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-        .msg { max-width: 80%; padding: 12px 16px; border-radius: 18px; font-size: 15px; position: relative; word-wrap: break-word; cursor: pointer; }
-        .sent { align-self: flex-end; background: var(--accent-gradient); border-bottom-right-radius: 4px; }
-        .received { align-self: flex-start; background: var(--sidebar-dark); border-bottom-left-radius: 4px; }
-        .edited-tag { font-size: 10px; opacity: 0.5; font-style: italic; margin-left: 5px; }
-        .msg-footer { display: flex; align-items: center; justify-content: flex-end; gap: 5px; margin-top: 5px; font-size: 10px; opacity: 0.7; }
+        /* Main Chat Area */
+        .chat-area { flex: 1; display: flex; flex-direction: column; width: 100%; position: relative; }
+        .chat-header { padding: 12px 20px; background: rgba(22, 27, 38, 0.8); backdrop-filter: blur(10px); display: flex; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); z-index: 10; }
+        
+        .header-info { margin-left: 12px; }
+        .header-name { font-weight: 700; font-size: 16px; }
+        .header-status { font-size: 11px; color: var(--accent-blue); font-weight: 500; }
 
+        #message-container { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+        
+        /* Message Bubbles */
+        .msg { max-width: 75%; padding: 12px 16px; border-radius: 18px; font-size: 14.5px; position: relative; line-height: 1.5; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .sent { align-self: flex-end; background: var(--sent-msg); border-bottom-right-radius: 4px; color: white; }
+        .received { align-self: flex-start; background: var(--sidebar-dark); border-bottom-left-radius: 4px; border: 1px solid rgba(255,255,255,0.05); }
+        
+        .msg-time { font-size: 10px; margin-top: 4px; opacity: 0.7; display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
+        .tick-blue { color: var(--accent-blue); }
+
+        /* Controls */
+        .input-wrapper { padding: 15px 20px; background: var(--bg-dark); padding-bottom: calc(15px + env(safe-area-inset-bottom)); }
+        .input-bar { background: var(--sidebar-dark); padding: 6px 10px 6px 20px; border-radius: 30px; display: flex; align-items: center; border: 1px solid rgba(255,255,255,0.05); }
+        input[type="text"] { flex: 1; background: transparent; border: none; color: white; font-size: 16px; padding: 10px 0; outline: none; }
+        .send-btn { background: var(--accent-gradient); border: none; width: 40px; height: 40px; border-radius: 50%; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        
         /* Context Menu */
-        #context-menu { display: none; position: fixed; background: #1e293b; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 1000; overflow: hidden; min-width: 140px; }
-        .menu-item { padding: 12px 16px; font-size: 14px; cursor: pointer; transition: 0.2s; color: white; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .menu-item:last-child { border: none; }
-        .menu-item:hover { background: rgba(255,255,255,0.05); }
-        .menu-delete { color: var(--delete-red); }
+        #ctx-menu { display: none; position: fixed; background: #1e293b; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 2000; overflow: hidden; min-width: 150px; }
+        .ctx-item { padding: 12px 16px; font-size: 14px; cursor: pointer; color: white; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .ctx-item:hover { background: rgba(255,255,255,0.05); }
 
-        /* Input Area */
-        .input-wrapper { padding: 10px 15px 20px 15px; background: #0b0f1a; }
-        .input-area { background: var(--sidebar-dark); padding: 5px 15px; border-radius: 30px; display: flex; align-items: center; gap: 10px; border: 1px solid rgba(255,255,255,0.1); }
-        input[type="text"] { flex: 1; background: transparent; border: none; color: white; padding: 12px 5px; outline: none; font-size: 16px; }
+        .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 999; }
+        .overlay.active { display: block; }
+        
+        .menu-btn { display: none; background: none; border: none; color: white; font-size: 24px; cursor: pointer; margin-right: 10px; }
+        @media (max-width: 768px) { .menu-btn { display: block; } }
     </style>
 </head>
 <body>
 
-    <div id="context-menu">
-        <div class="menu-item" onclick="initEdit()">Edit Message</div>
-        <div class="menu-item menu-delete" onclick="deleteMessage()">Delete for Everyone</div>
-    </div>
+    <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
 
-    <div class="sidebar" id="sidebar">
-        <div style="padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.05);">
-            <h2 style="margin: 0;">CSE-5 Portal</h2>
-        </div>
-        <div class="user-list" id="userList"></div>
-    </div>
-
-    <div class="chat-area">
-        <div class="chat-header" style="display: flex; align-items: center; padding: 15px; background: var(--sidebar-dark);">
-            <button onclick="document.getElementById('sidebar').classList.toggle('active')" style="background:none; border:none; color:white; font-size:20px;" class="mobile-only">☰</button>
-            <div style="margin-left: 10px;">
-                <div id="chatName" style="font-weight: bold; font-size: 18px;">Welcome</div>
-                <div id="userLastSeen" style="font-size: 11px; color: var(--text-muted);"></div>
+    <div class="app-container">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h2 style="font-size: 22px; font-weight: 800; letter-spacing: -0.5px;">CSE-3 Chat</h2>
             </div>
-        </div>
+            <div class="user-list" id="userList"></div>
+        </aside>
 
-        <div id="message-container"></div>
-
-        <div class="input-wrapper">
-            <form id="chatForm" style="display: none;" onsubmit="handleChatSubmit(event)">
-                <div class="input-area">
-                    <input type="text" id="msgInput" placeholder="Write a message..." autocomplete="off">
-                    <button type="submit" id="sendBtn" style="background: var(--accent-gradient); border: none; color: white; width: 40px; height: 40px; border-radius: 50%; cursor: pointer;">➔</button>
+        <main class="chat-area">
+            <header class="chat-header">
+                <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+                <div id="activeAvatar" class="avatar" style="width: 40px; height: 40px; border-radius: 12px; display: none;"></div>
+                <div class="header-info">
+                    <div class="header-name" id="chatName">Select your Classmate</div>
+                    <div class="header-status" id="headerStatus"></div>
                 </div>
-            </form>
-        </div>
+            </header>
+
+            <div id="message-container"></div>
+
+            <div id="ctx-menu">
+                <div class="ctx-item" onclick="startEdit()">✎ Edit Message</div>
+                <div class="ctx-item" style="color: var(--delete-red);" onclick="deleteMsg()">🗑 Delete for everyone</div>
+            </div>
+
+            <div class="input-wrapper">
+                <form id="chatForm" onsubmit="handleChatSubmit(event)" style="display: none;">
+                    <div class="input-bar">
+                        <input type="text" id="msgInput" placeholder="Write a message..." autocomplete="off">
+                        <button type="submit" class="send-btn" id="sendBtn">➔</button>
+                    </div>
+                </form>
+            </div>
+        </main>
     </div>
 
 <script type="module">
@@ -114,7 +148,12 @@
     const db = getFirestore(app);
     const rtdb = getDatabase(app);
 
-    let myRoll = "", activeChatId = null, targetRoll = "", selectedMsgKey = null, editingMsg = null;
+    let myRoll = "", activeChatId = null, targetRoll = "", selectedKey = null;
+
+    window.toggleSidebar = () => {
+        document.getElementById('sidebar').classList.toggle('active');
+        document.getElementById('overlay').classList.toggle('active');
+    };
 
     onAuthStateChanged(auth, async (user) => {
         if (user) {
@@ -124,8 +163,7 @@
                 myRoll = snap.docs[0].data().rollNo;
                 setupPresence();
                 loadClassmates();
-                listenForUnreadsAndNotifs();
-                if (Notification.permission !== "granted") Notification.requestPermission();
+                listenForGlobalUnreads();
             }
         } else { window.location.href = "login.html"; }
     });
@@ -140,6 +178,14 @@
         });
     }
 
+    function timeAgo(ts) {
+        if (!ts) return "Recently";
+        const diff = (Date.now() - ts) / 1000;
+        if (diff < 60) return "Active now";
+        if (diff < 3600) return `Active ${Math.floor(diff/60)}m ago`;
+        return `Active ${new Date(ts).getHours()}:${new Date(ts).getMinutes()}`;
+    }
+
     async function loadClassmates() {
         const snap = await getDocs(collection(db, "students"));
         const list = document.getElementById('userList');
@@ -149,15 +195,19 @@
             if (data.rollNo === myRoll) return;
             const div = document.createElement('div');
             div.className = 'user-item';
-            div.id = `item-${data.rollNo}`;
+            div.id = `user-${data.rollNo}`;
             div.innerHTML = `
                 <div class="avatar-box"><div class="avatar">${data.name[0]}</div><div class="status-dot"></div></div>
-                <div style="flex:1"><div style="font-weight:bold">${data.name}</div><div style="font-size:11px; opacity:0.6">${data.rollNo}</div></div>
+                <div style="flex:1"><div style="font-weight:700">${data.name}</div><div id="sub-${data.rollNo}" style="font-size:11px; opacity:0.6">Offline</div></div>
                 <div class="unread-badge" id="badge-${data.rollNo}">0</div>`;
-            div.onclick = () => openChat(data.rollNo, data.name);
+            div.onclick = () => { openChat(data.rollNo, data.name); if(window.innerWidth < 768) toggleSidebar(); };
             list.appendChild(div);
+            
             onValue(ref(rtdb, `status/${data.rollNo}`), (s) => {
-                div.classList.toggle('online', s.val()?.state === 'online');
+                const status = s.val();
+                div.classList.toggle('online', status?.state === 'online');
+                document.getElementById(`sub-${data.rollNo}`).innerText = status?.state === 'online' ? 'Online' : timeAgo(status?.lastSeen);
+                if (targetRoll === data.rollNo) document.getElementById('headerStatus').innerText = status?.state === 'online' ? 'Online' : timeAgo(status?.lastSeen);
             });
         });
     }
@@ -168,100 +218,77 @@
         activeChatId = `${ids[0]}_${ids[1]}`;
         document.getElementById('chatName').innerText = tName;
         document.getElementById('chatForm').style.display = 'block';
+        document.getElementById('activeAvatar').innerText = tName[0];
+        document.getElementById('activeAvatar').style.display = 'flex';
 
         onValue(ref(rtdb, `chats/${activeChatId}`), (snap) => {
             const container = document.getElementById('message-container');
             container.innerHTML = "";
-            const messages = snap.val();
-            if (messages) {
-                Object.keys(messages).forEach(key => {
-                    const m = messages[key];
-                    if (m.senderId !== myRoll && !m.seen) update(ref(rtdb, `chats/${activeChatId}/${key}`), { seen: true });
-                    const div = document.createElement('div');
-                    div.className = `msg ${m.senderId === myRoll ? 'sent' : 'received'}`;
-                    
-                    div.oncontextmenu = (e) => {
-                        e.preventDefault();
-                        if(m.senderId === myRoll) {
-                            selectedMsgKey = key;
-                            editingMsg = m;
-                            showContextMenu(e.pageX, e.pageY);
-                        }
-                    };
-
-                    const time = new Date(m.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-                    const edited = m.edited ? `<span class="edited-tag">(edited)</span>` : "";
-                    div.innerHTML = `${m.text} ${edited} <div class="msg-footer">${time} ${m.senderId === myRoll ? (m.seen ? '✔✔' : '✔') : ''}</div>`;
-                    container.appendChild(div);
-                });
-                container.scrollTop = container.scrollHeight;
-            }
+            const messages = snap.val() || {};
+            Object.keys(messages).forEach(key => {
+                const m = messages[key];
+                if (m.senderId !== myRoll && !m.seen) update(ref(rtdb, `chats/${activeChatId}/${key}`), { seen: true });
+                const div = document.createElement('div');
+                div.className = `msg ${m.senderId === myRoll ? 'sent' : 'received'}`;
+                div.oncontextmenu = (e) => {
+                    e.preventDefault();
+                    if(m.senderId === myRoll) {
+                        selectedKey = key;
+                        const menu = document.getElementById('ctx-menu');
+                        menu.style.display = 'block';
+                        menu.style.left = `${Math.min(e.pageX, window.innerWidth - 160)}px`;
+                        menu.style.top = `${e.pageY}px`;
+                    }
+                };
+                const time = new Date(m.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                const ticks = m.senderId === myRoll ? `<span class="${m.seen ? 'tick-blue' : ''}">${m.seen ? '✔✔' : '✔'}</span>` : '';
+                div.innerHTML = `${m.text} ${m.edited ? '<small style="opacity:0.5; font-style:italic"> (edited)</small>' : ''} <div class="msg-time">${time} ${ticks}</div>`;
+                container.appendChild(div);
+            });
+            container.scrollTop = container.scrollHeight;
         });
     }
 
-    function listenForUnreadsAndNotifs() {
-        onValue(ref(rtdb, 'chats'), (snap) => {
-            const all = snap.val() || {};
-            const counts = {};
-            Object.keys(all).forEach(id => {
-                if (id.includes(myRoll)) {
-                    const other = id.replace(myRoll, "").replace("_", "");
-                    let unread = 0;
-                    Object.values(all[id]).forEach(m => { 
-                        if (m.senderId !== myRoll && !m.seen) {
-                            unread++;
-                            if (!document.hasFocus() && other !== targetRoll) {
-                                new Notification(`New message from ${other}`, { body: m.text });
-                            }
-                        }
-                    });
-                    if (unread > 0) counts[other] = unread;
-                }
-            });
-            document.querySelectorAll('.unread-badge').forEach(badge => {
-                const roll = badge.id.split('-')[1];
-                badge.innerText = counts[roll] || 0;
-                badge.parentElement.classList.toggle('has-unread', !!counts[roll]);
-            });
-        });
-    }
-
-    function showContextMenu(x, y) {
-        const menu = document.getElementById('context-menu');
-        menu.style.display = 'block';
-        menu.style.left = `${x}px`;
-        menu.style.top = `${y}px`;
-    }
-
-    window.onclick = () => document.getElementById('context-menu').style.display = 'none';
-
-    window.initEdit = () => {
-        const input = document.getElementById('msgInput');
-        input.value = editingMsg.text;
-        input.focus();
-        document.getElementById('sendBtn').innerText = "✎";
-    };
-
-    window.deleteMessage = () => {
-        if(confirm("Delete for everyone?")) remove(ref(rtdb, `chats/${activeChatId}/${selectedMsgKey}`));
-    };
+    window.onclick = () => document.getElementById('ctx-menu').style.display = 'none';
 
     window.handleChatSubmit = (e) => {
         e.preventDefault();
         const input = document.getElementById('msgInput');
         if (!input.value.trim()) return;
-
-        if (selectedMsgKey && document.getElementById('sendBtn').innerText === "✎") {
-            // Edit Mode
-            update(ref(rtdb, `chats/${activeChatId}/${selectedMsgKey}`), { text: input.value, edited: true });
+        if (selectedKey && document.getElementById('sendBtn').innerText === "✎") {
+            update(ref(rtdb, `chats/${activeChatId}/${selectedKey}`), { text: input.value, edited: true });
             document.getElementById('sendBtn').innerText = "➔";
-            selectedMsgKey = null;
+            selectedKey = null;
         } else {
-            // Normal Send Mode
             push(ref(rtdb, `chats/${activeChatId}`), { text: input.value, senderId: myRoll, timestamp: Date.now(), seen: false });
         }
         input.value = "";
     };
+
+    window.deleteMsg = () => { if(confirm("Delete message?")) remove(ref(rtdb, `chats/${activeChatId}/${selectedKey}`)); };
+    window.startEdit = () => {
+        onValue(ref(rtdb, `chats/${activeChatId}/${selectedKey}`), (s) => {
+            document.getElementById('msgInput').value = s.val().text;
+            document.getElementById('sendBtn').innerText = "✎";
+        }, { onlyOnce: true });
+    };
+
+    function listenForGlobalUnreads() {
+        onValue(ref(rtdb, 'chats'), (snap) => {
+            const all = snap.val() || {};
+            Object.keys(all).forEach(id => {
+                if (id.includes(myRoll)) {
+                    const other = id.replace(myRoll, "").replace("_", "");
+                    const count = Object.values(all[id]).filter(m => m.senderId !== myRoll && !m.seen).length;
+                    const el = document.getElementById(`user-${other}`);
+                    if (el) {
+                        el.classList.toggle('has-unread', count > 0);
+                        document.getElementById(`badge-${other}`).innerText = count;
+                    }
+                }
+            });
+        });
+    }
 </script>
 </body>
 </html>
